@@ -1,0 +1,26 @@
+{
+  "name": "nft-marketplace",
+  "version": "1.0.0",
+  "description": "A decentralized NFT marketplace for trading ERC-721 tokens",
+  "main": "index.js",
+  "scripts": {
+    "compile": "npx hardhat compile",
+    "test": "npx hardhat test",
+    "deploy:sepolia": "npx hardhat run scripts/deploy.ts --network sepolia",
+    "verify": "npx hardhat verify --network sepolia"
+  },
+  "keywords": ["nft", "marketplace", "ethereum", "solidity", "hardhat"],
+  "author": "",
+  "license": "MIT",
+  "devDependencies": {
+    "@nomicfoundation/hardhat-toolbox": "^4.0.0",
+    "@types/node": "^20.0.0",
+    "hardhat": "^2.19.0",
+    "ts-node": "^10.9.2",
+    "typescript": "^5.3.0"
+  },
+  "dependencies": {
+    "@openzeppelin/contracts": "^5.0.0",
+    "dotenv": "^16.3.0"
+  }
+}
