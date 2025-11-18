@@ -5,6 +5,8 @@ import { useAccount } from "wagmi";
 import { type Address } from "viem";
 import { NFTGrid } from "@/components/nft/NFTGrid";
 import { useUserListings } from "@/hooks/useUserListings";
+import { useOwnedNFTs } from "@/hooks/useOwnedNFTs";
+import { KNOWN_NFT_CONTRACTS } from "@/config/contracts";
 
 interface PageProps {
   params: Promise<{
@@ -17,12 +19,27 @@ type Tab = "owned" | "listed";
 export default function ProfilePage({ params }: PageProps) {
   const { address: profileAddress } = use(params);
   const { address: connectedAddress } = useAccount();
-  const [activeTab, setActiveTab] = useState<Tab>("listed");
+  const [activeTab, setActiveTab] = useState<Tab>("owned");
 
   const isOwnProfile =
     connectedAddress?.toLowerCase() === profileAddress.toLowerCase();
 
-  const { listings, isLoading } = useUserListings(profileAddress as Address);
+  const { listings, isLoading: listingsLoading } = useUserListings(
+    profileAddress as Address
+  );
+  const { nfts: ownedNFTs, isLoading: ownedLoading } = useOwnedNFTs(
+    profileAddress as Address,
+    KNOWN_NFT_CONTRACTS
+  );
+
+  const isLoading = activeTab === "owned" ? ownedLoading : listingsLoading;
+
+  // Convert owned NFTs to the format expected by NFTGrid
+  const ownedItems = ownedNFTs.map((nft) => ({
+    ...nft,
+    price: undefined,
+    seller: undefined,
+  }));
 
   return (
     <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
@@ -45,6 +62,16 @@ export default function ProfilePage({ params }: PageProps) {
       <div className="border-b border-gray-800 mb-6">
         <nav className="flex gap-8">
           <button
+            onClick={() => setActiveTab("owned")}
+            className={`pb-4 text-sm font-medium border-b-2 transition-colors ${
+              activeTab === "owned"
+                ? "border-blue-500 text-white"
+                : "border-transparent text-gray-400 hover:text-white"
+            }`}
+          >
+            Owned ({ownedNFTs.length})
+          </button>
+          <button
             onClick={() => setActiveTab("listed")}
             className={`pb-4 text-sm font-medium border-b-2 transition-colors ${
               activeTab === "listed"
@@ -53,16 +80,6 @@ export default function ProfilePage({ params }: PageProps) {
             }`}
           >
             Listed ({listings.length})
-          </button>
-          <button
-            onClick={() => setActiveTab("owned")}
-            className={`pb-4 text-sm font-medium border-b-2 transition-colors ${
-              activeTab === "owned"
-                ? "border-blue-500 text-white"
-                : "border-transparent text-gray-400 hover:text-white"
-            }`}
-          >
-            Owned
           </button>
         </nav>
       </div>
@@ -73,7 +90,16 @@ export default function ProfilePage({ params }: PageProps) {
           <div className="inline-block animate-spin rounded-full h-8 w-8 border-4 border-gray-600 border-t-blue-500" />
           <p className="text-gray-400 mt-4">Loading...</p>
         </div>
-      ) : activeTab === "listed" ? (
+      ) : activeTab === "owned" ? (
+        <NFTGrid
+          items={ownedItems}
+          emptyMessage={
+            isOwnProfile
+              ? "You don't own any NFTs yet"
+              : "No NFTs owned"
+          }
+        />
+      ) : (
         <NFTGrid
           items={listings}
           emptyMessage={
@@ -82,15 +108,6 @@ export default function ProfilePage({ params }: PageProps) {
               : "No NFTs listed"
           }
         />
-      ) : (
-        <div className="text-center py-12">
-          <p className="text-gray-400">
-            Connect an NFT indexer (like Alchemy) to view owned NFTs
-          </p>
-          <p className="text-gray-500 text-sm mt-2">
-            For now, only listed NFTs are visible
-          </p>
-        </div>
       )}
     </div>
   );
