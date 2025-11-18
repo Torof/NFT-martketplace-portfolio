@@ -4,6 +4,7 @@ import { useEffect, useState } from "react";
 import { usePublicClient } from "wagmi";
 import { type Address, parseAbiItem } from "viem";
 import { MARKETPLACE_ADDRESS, MARKETPLACE_ABI } from "@/config/contracts";
+import { fetchNFTMetadata, resolveImageURL } from "@/lib/metadata";
 
 interface ListingItem {
   contract: Address;
@@ -69,8 +70,8 @@ export function useListings() {
           )
         );
 
-        // Filter to only active listings and get latest price
-        const activeListings = new Map<string, ListingItem>();
+        // Filter to only active listings
+        const activeListings: ListingItem[] = [];
 
         for (const event of listedEvents) {
           const key = `${event.args.nftContract}-${event.args.tokenId?.toString()}`;
@@ -87,18 +88,25 @@ export function useListings() {
           });
 
           if (listing.active) {
-            activeListings.set(key, {
+            // Fetch metadata
+            const metadata = await fetchNFTMetadata(
+              publicClient,
+              event.args.nftContract as Address,
+              event.args.tokenId as bigint
+            );
+
+            activeListings.push({
               contract: event.args.nftContract as Address,
               tokenId: event.args.tokenId?.toString() || "0",
-              name: `NFT #${event.args.tokenId?.toString()}`,
-              image: "", // Will be fetched from metadata
+              name: metadata?.name || `NFT #${event.args.tokenId?.toString()}`,
+              image: metadata?.image ? resolveImageURL(metadata.image) : "",
               price: listing.price,
               seller: listing.seller,
             });
           }
         }
 
-        setListings(Array.from(activeListings.values()));
+        setListings(activeListings);
       } catch (error) {
         console.error("Error fetching listings:", error);
       } finally {

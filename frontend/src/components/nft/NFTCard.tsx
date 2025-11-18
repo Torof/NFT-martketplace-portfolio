@@ -22,18 +22,28 @@ export function NFTCard({
   price,
   seller,
 }: NFTCardProps) {
+  const isDataUri = image?.startsWith("data:");
+
   return (
     <Link href={`/nft/${contract}/${tokenId}`}>
       <div className="bg-gray-900 rounded-xl overflow-hidden border border-gray-800 hover:border-gray-700 transition-colors group">
         <div className="aspect-square relative bg-gray-800">
           {image ? (
-            <Image
-              src={image}
-              alt={name}
-              fill
-              className="object-cover group-hover:scale-105 transition-transform duration-300"
-              sizes="(max-width: 768px) 100vw, (max-width: 1200px) 50vw, 25vw"
-            />
+            isDataUri ? (
+              <img
+                src={image}
+                alt={name}
+                className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300"
+              />
+            ) : (
+              <Image
+                src={image}
+                alt={name}
+                fill
+                className="object-cover group-hover:scale-105 transition-transform duration-300"
+                sizes="(max-width: 768px) 100vw, (max-width: 1200px) 50vw, 25vw"
+              />
+            )
           ) : (
             <div className="w-full h-full flex items-center justify-center text-gray-600">
               No Image

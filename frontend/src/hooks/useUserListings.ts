@@ -4,6 +4,7 @@ import { useEffect, useState } from "react";
 import { usePublicClient } from "wagmi";
 import { type Address, parseAbiItem } from "viem";
 import { MARKETPLACE_ADDRESS, MARKETPLACE_ABI } from "@/config/contracts";
+import { fetchNFTMetadata, resolveImageURL } from "@/lib/metadata";
 
 interface ListingItem {
   contract: Address;
@@ -52,11 +53,18 @@ export function useUserListings(userAddress: Address) {
           });
 
           if (listing.active && listing.seller.toLowerCase() === userAddress.toLowerCase()) {
+            // Fetch metadata
+            const metadata = await fetchNFTMetadata(
+              publicClient,
+              event.args.nftContract as Address,
+              event.args.tokenId as bigint
+            );
+
             activeListings.push({
               contract: event.args.nftContract as Address,
               tokenId: event.args.tokenId?.toString() || "0",
-              name: `NFT #${event.args.tokenId?.toString()}`,
-              image: "",
+              name: metadata?.name || `NFT #${event.args.tokenId?.toString()}`,
+              image: metadata?.image ? resolveImageURL(metadata.image) : "",
               price: listing.price,
               seller: listing.seller,
             });

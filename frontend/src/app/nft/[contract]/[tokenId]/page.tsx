@@ -6,6 +6,7 @@ import { formatEther, type Address } from "viem";
 import { MARKETPLACE_ADDRESS, MARKETPLACE_ABI, ERC721_ABI } from "@/config/contracts";
 import { BuyButton } from "@/components/marketplace/BuyButton";
 import { ListingActions } from "@/components/marketplace/ListingActions";
+import { useNFT } from "@/hooks/useNFT";
 
 interface PageProps {
   params: Promise<{
@@ -20,6 +21,9 @@ export default function NFTDetailPage({ params }: PageProps) {
 
   const nftContract = contract as Address;
   const tokenIdBigInt = BigInt(tokenId);
+
+  // Get NFT metadata
+  const { metadata, imageUrl, isLoading: metadataLoading } = useNFT(nftContract, tokenIdBigInt);
 
   // Get NFT owner
   const { data: owner } = useReadContract({
@@ -44,34 +48,35 @@ export default function NFTDetailPage({ params }: PageProps) {
     args: [nftContract, tokenIdBigInt],
   });
 
-  // Get token URI for metadata
-  const { data: tokenURI } = useReadContract({
-    address: nftContract,
-    abi: ERC721_ABI,
-    functionName: "tokenURI",
-    args: [tokenIdBigInt],
-  });
-
   const isOwner = address && owner && address.toLowerCase() === owner.toLowerCase();
   const isListed = listing?.active;
   const isSeller = address && listing?.seller && address.toLowerCase() === listing.seller.toLowerCase();
+
+  const displayName = metadata?.name || `${collectionName || "NFT"} #${tokenId}`;
 
   return (
     <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
       <div className="grid lg:grid-cols-2 gap-8">
         {/* Image Section */}
         <div className="aspect-square bg-gray-900 rounded-2xl overflow-hidden border border-gray-800">
-          <div className="w-full h-full flex items-center justify-center text-gray-600">
-            <div className="text-center">
-              <div className="text-6xl mb-4">🖼️</div>
-              <p>NFT #{tokenId}</p>
-              {tokenURI && (
-                <p className="text-xs mt-2 text-gray-500 break-all px-4">
-                  {tokenURI.toString().slice(0, 50)}...
-                </p>
-              )}
+          {metadataLoading ? (
+            <div className="w-full h-full flex items-center justify-center">
+              <div className="animate-spin rounded-full h-12 w-12 border-4 border-gray-600 border-t-blue-500" />
             </div>
-          </div>
+          ) : imageUrl ? (
+            <img
+              src={imageUrl}
+              alt={displayName}
+              className="w-full h-full object-cover"
+            />
+          ) : (
+            <div className="w-full h-full flex items-center justify-center text-gray-600">
+              <div className="text-center">
+                <div className="text-6xl mb-4">🖼️</div>
+                <p>No image available</p>
+              </div>
+            </div>
+          )}
         </div>
 
         {/* Details Section */}
@@ -82,9 +87,11 @@ export default function NFTDetailPage({ params }: PageProps) {
             </span>
           </div>
 
-          <h1 className="text-3xl font-bold mb-4">
-            {collectionName || "NFT"} #{tokenId}
-          </h1>
+          <h1 className="text-3xl font-bold mb-4">{displayName}</h1>
+
+          {metadata?.description && (
+            <p className="text-gray-400 mb-4">{metadata.description}</p>
+          )}
 
           <div className="flex items-center gap-2 text-gray-400 mb-6">
             <span>Owned by</span>
@@ -141,6 +148,26 @@ export default function NFTDetailPage({ params }: PageProps) {
               </>
             )}
           </div>
+
+          {/* Traits */}
+          {metadata?.attributes && metadata.attributes.length > 0 && (
+            <div className="bg-gray-900 rounded-xl border border-gray-800 p-6 mb-6">
+              <h3 className="font-semibold mb-4">Traits</h3>
+              <div className="grid grid-cols-2 sm:grid-cols-3 gap-3">
+                {metadata.attributes.map((attr, index) => (
+                  <div
+                    key={index}
+                    className="bg-gray-800 rounded-lg p-3 text-center"
+                  >
+                    <p className="text-xs text-blue-400 uppercase">
+                      {attr.trait_type}
+                    </p>
+                    <p className="font-medium mt-1">{attr.value}</p>
+                  </div>
+                ))}
+              </div>
+            </div>
+          )}
 
           {/* Details */}
           <div className="bg-gray-900 rounded-xl border border-gray-800 p-6">
