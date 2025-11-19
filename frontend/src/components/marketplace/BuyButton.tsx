@@ -1,9 +1,10 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect } from "react";
 import { useAccount, useWriteContract, useWaitForTransactionReceipt } from "wagmi";
 import { type Address, formatEther } from "viem";
 import { MARKETPLACE_ADDRESS, MARKETPLACE_ABI } from "@/config/contracts";
+import { useToast } from "@/components/common/Toast";
 
 interface BuyButtonProps {
   nftContract: Address;
@@ -14,44 +15,43 @@ interface BuyButtonProps {
 
 export function BuyButton({ nftContract, tokenId, price, onSuccess }: BuyButtonProps) {
   const { isConnected } = useAccount();
-  const [error, setError] = useState<string | null>(null);
+  const { showToast } = useToast();
 
-  const { writeContract, data: hash, isPending } = useWriteContract();
+  const { writeContract, data: hash, isPending, error } = useWriteContract();
 
   const { isLoading: isConfirming, isSuccess } = useWaitForTransactionReceipt({
     hash,
   });
 
-  const handleBuy = async () => {
-    setError(null);
-    try {
-      writeContract({
-        address: MARKETPLACE_ADDRESS,
-        abi: MARKETPLACE_ABI,
-        functionName: "buyNFT",
-        args: [nftContract, tokenId],
-        value: price,
-      });
-    } catch (err) {
-      setError(err instanceof Error ? err.message : "Transaction failed");
+  useEffect(() => {
+    if (isSuccess) {
+      showToast("NFT purchased successfully!", "success");
+      onSuccess?.();
     }
-  };
+  }, [isSuccess, showToast, onSuccess]);
 
-  if (isSuccess) {
-    onSuccess?.();
-    return (
-      <div className="text-center py-4">
-        <p className="text-green-500 font-medium">Purchase successful!</p>
-        <p className="text-gray-400 text-sm mt-1">The NFT is now yours</p>
-      </div>
-    );
-  }
+  useEffect(() => {
+    if (error) {
+      showToast(error.message || "Transaction failed", "error");
+    }
+  }, [error, showToast]);
+
+  const handleBuy = () => {
+    showToast("Confirm transaction in your wallet", "info");
+    writeContract({
+      address: MARKETPLACE_ADDRESS,
+      abi: MARKETPLACE_ABI,
+      functionName: "buyNFT",
+      args: [nftContract, tokenId],
+      value: price,
+    });
+  };
 
   if (!isConnected) {
     return (
       <button
         disabled
-        className="w-full py-3 px-4 bg-gray-700 text-gray-400 rounded-lg cursor-not-allowed"
+        className="w-full py-3 px-4 bg-gray-700 text-gray-400 rounded-xl cursor-not-allowed"
       >
         Connect wallet to buy
       </button>
@@ -59,19 +59,16 @@ export function BuyButton({ nftContract, tokenId, price, onSuccess }: BuyButtonP
   }
 
   return (
-    <div>
-      <button
-        onClick={handleBuy}
-        disabled={isPending || isConfirming}
-        className="w-full py-3 px-4 bg-blue-600 text-white font-medium rounded-lg hover:bg-blue-700 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
-      >
-        {isPending
-          ? "Confirm in wallet..."
-          : isConfirming
-          ? "Processing..."
-          : `Buy for ${formatEther(price)} ETH`}
-      </button>
-      {error && <p className="text-red-500 text-sm mt-2">{error}</p>}
-    </div>
+    <button
+      onClick={handleBuy}
+      disabled={isPending || isConfirming}
+      className="w-full py-3 px-4 bg-gradient-to-r from-blue-600 to-purple-600 text-white font-semibold rounded-xl hover:from-blue-500 hover:to-purple-500 transition-all duration-300 disabled:opacity-50 disabled:cursor-not-allowed disabled:hover:from-blue-600 disabled:hover:to-purple-600"
+    >
+      {isPending
+        ? "Confirm in wallet..."
+        : isConfirming
+        ? "Processing..."
+        : `Buy for ${formatEther(price)} ETH`}
+    </button>
   );
 }
