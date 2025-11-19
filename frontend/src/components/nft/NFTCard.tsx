@@ -26,8 +26,8 @@ export function NFTCard({
 
   return (
     <Link href={`/nft/${contract}/${tokenId}`}>
-      <div className="bg-gray-900 rounded-xl overflow-hidden border border-gray-800 hover:border-gray-700 transition-colors group">
-        <div className="aspect-square relative bg-gray-800">
+      <div className="bg-[var(--card)] rounded-xl overflow-hidden border border-[var(--border)] hover:border-[var(--border-hover)] transition-all duration-300 group hover:-translate-y-1">
+        <div className="aspect-square relative bg-[var(--card-hover)]">
           {image ? (
             isDataUri ? (
               <img
@@ -45,22 +45,22 @@ export function NFTCard({
               />
             )
           ) : (
-            <div className="w-full h-full flex items-center justify-center text-gray-600">
+            <div className="w-full h-full flex items-center justify-center text-[var(--muted)]">
               No Image
             </div>
           )}
         </div>
         <div className="p-4">
-          <h3 className="font-semibold text-white truncate">{name}</h3>
+          <h3 className="font-semibold truncate">{name}</h3>
           {seller && (
-            <p className="text-sm text-gray-400 mt-1 truncate">
+            <p className="text-sm text-[var(--muted)] mt-1 truncate">
               {seller.slice(0, 6)}...{seller.slice(-4)}
             </p>
           )}
           {price !== undefined && (
             <div className="mt-3 flex items-center justify-between">
-              <span className="text-sm text-gray-400">Price</span>
-              <span className="font-medium text-white">
+              <span className="text-sm text-[var(--muted)]">Price</span>
+              <span className="font-medium">
                 {formatEther(price)} ETH
               </span>
             </div>

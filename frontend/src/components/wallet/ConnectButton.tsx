@@ -28,16 +28,16 @@ export function ConnectButton() {
   if (isConnected && address) {
     return (
       <div className="flex items-center gap-3">
-        <span className="text-sm text-gray-300 hidden sm:block">
+        <span className="text-sm text-[var(--muted)] hidden sm:block">
           {address.slice(0, 6)}...{address.slice(-4)}
         </span>
         <button
           onClick={() => disconnect()}
-          className="group relative p-2.5 rounded-full bg-gray-800 border border-gray-700 hover:border-red-500 transition-all duration-300"
+          className="group relative p-2.5 rounded-full bg-[var(--card)] border border-[var(--border)] hover:border-red-500/50 transition-all duration-300"
           title="Disconnect wallet"
         >
           <PowerIcon className="w-5 h-5 text-green-400 group-hover:text-red-400 transition-colors" />
-          <span className="absolute inset-0 rounded-full bg-green-400/20 group-hover:bg-red-400/20 transition-colors" />
+          <span className="absolute inset-0 rounded-full bg-green-400/10 group-hover:bg-red-400/10 transition-colors" />
         </button>
       </div>
     );
@@ -47,11 +47,11 @@ export function ConnectButton() {
     <button
       onClick={() => connect({ connector: injected() })}
       disabled={isPending}
-      className="group relative p-2.5 rounded-full bg-gray-800 border border-gray-700 hover:border-blue-500 transition-all duration-300 disabled:opacity-50 disabled:cursor-not-allowed"
+      className="group relative p-2.5 rounded-full bg-[var(--card)] border border-[var(--border)] hover:border-blue-500/50 transition-all duration-300 disabled:opacity-50 disabled:cursor-not-allowed"
       title="Connect wallet"
     >
       <PowerIcon
-        className={`w-5 h-5 text-gray-400 group-hover:text-blue-400 transition-colors ${
+        className={`w-5 h-5 text-[var(--muted)] group-hover:text-blue-400 transition-colors ${
           isPending ? "animate-pulse" : ""
         }`}
       />

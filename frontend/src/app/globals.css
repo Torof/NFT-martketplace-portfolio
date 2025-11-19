@@ -1,8 +1,13 @@
 @import "tailwindcss";
 
 :root {
-  --background: #030712;
-  --foreground: #f9fafb;
+  --background: #13131a;
+  --foreground: #e5e5e5;
+  --card: #1c1c24;
+  --card-hover: #252530;
+  --border: #2a2a36;
+  --border-hover: #3a3a48;
+  --muted: #8b8b9b;
 }
 
 body {
@@ -16,16 +21,16 @@ body {
 }
 
 ::-webkit-scrollbar-track {
-  background: #1f2937;
+  background: var(--card);
 }
 
 ::-webkit-scrollbar-thumb {
-  background: #4b5563;
+  background: var(--border);
   border-radius: 4px;
 }
 
 ::-webkit-scrollbar-thumb:hover {
-  background: #6b7280;
+  background: var(--border-hover);
 }
 
 /* Animations */
