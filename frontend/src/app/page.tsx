@@ -6,59 +6,39 @@ export default function Home() {
   return (
     <div className="flex flex-col">
       {/* Hero Section */}
-      <section className="relative min-h-[80vh] flex items-center justify-center overflow-hidden">
+      <section className="relative py-16 overflow-hidden">
         {/* Animated gradient background */}
-        <div className="absolute inset-0 bg-gradient-to-br from-blue-600/20 via-purple-600/20 to-pink-600/20" />
+        <div className="absolute inset-0 bg-gradient-to-br from-blue-600/10 via-purple-600/10 to-pink-600/10" />
         <div className="absolute inset-0">
-          <div className="absolute top-1/4 left-1/4 w-96 h-96 bg-blue-500/30 rounded-full blur-3xl animate-pulse" />
-          <div className="absolute bottom-1/4 right-1/4 w-96 h-96 bg-purple-500/30 rounded-full blur-3xl animate-pulse delay-1000" />
+          <div className="absolute top-0 left-1/4 w-64 h-64 bg-blue-500/20 rounded-full blur-3xl" />
+          <div className="absolute bottom-0 right-1/4 w-64 h-64 bg-purple-500/20 rounded-full blur-3xl" />
         </div>
 
         <div className="relative z-10 max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 text-center">
-          <h1 className="text-5xl sm:text-6xl lg:text-7xl font-bold tracking-tight">
-            <span className="bg-gradient-to-r from-white via-blue-100 to-white bg-clip-text text-transparent">
-              Discover, Collect
+          <h1 className="text-4xl sm:text-5xl font-bold tracking-tight">
+            <span className="bg-gradient-to-r from-white to-gray-300 bg-clip-text text-transparent">
+              Discover & Trade{" "}
             </span>
-            <br />
-            <span className="bg-gradient-to-r from-blue-400 via-purple-400 to-pink-400 bg-clip-text text-transparent">
-              & Trade NFTs
+            <span className="bg-gradient-to-r from-blue-400 to-purple-400 bg-clip-text text-transparent">
+              NFTs
             </span>
           </h1>
-          <p className="mt-6 text-lg sm:text-xl text-gray-300 max-w-2xl mx-auto">
-            The premier NFT marketplace on Ethereum. Explore unique digital art,
-            collectibles, and more from creators worldwide.
+          <p className="mt-4 text-gray-400 max-w-xl mx-auto">
+            The premier NFT marketplace on Ethereum
           </p>
-          <div className="mt-10 flex flex-col sm:flex-row items-center justify-center gap-4">
+          <div className="mt-6 flex items-center justify-center gap-3">
             <Link
               href="/explore"
-              className="group relative px-8 py-4 text-lg font-semibold text-white bg-gradient-to-r from-blue-600 to-purple-600 rounded-xl overflow-hidden transition-all duration-300 hover:scale-105 hover:shadow-lg hover:shadow-purple-500/25"
+              className="px-6 py-2.5 text-sm font-semibold text-white bg-gradient-to-r from-blue-600 to-purple-600 rounded-lg hover:opacity-90 transition-opacity"
             >
-              <span className="relative z-10">Explore Collection</span>
-              <div className="absolute inset-0 bg-gradient-to-r from-purple-600 to-pink-600 opacity-0 group-hover:opacity-100 transition-opacity" />
+              Explore
             </Link>
             <Link
               href="/explore"
-              className="px-8 py-4 text-lg font-semibold text-white border-2 border-gray-600 rounded-xl hover:border-white hover:bg-white/5 transition-all duration-300"
+              className="px-6 py-2.5 text-sm font-semibold text-white border border-gray-700 rounded-lg hover:border-gray-500 hover:bg-white/5 transition-all"
             >
-              List Your NFT
+              List NFT
             </Link>
-          </div>
-
-          {/* Stats inline */}
-          <div className="mt-16 grid grid-cols-2 sm:grid-cols-4 gap-8 max-w-3xl mx-auto">
-            {[
-              { value: "10K+", label: "NFTs" },
-              { value: "5K+", label: "Artists" },
-              { value: "50K+", label: "Sales" },
-              { value: "100K+", label: "Users" },
-            ].map((stat) => (
-              <div key={stat.label} className="text-center">
-                <div className="text-2xl sm:text-3xl font-bold bg-gradient-to-r from-blue-400 to-purple-400 bg-clip-text text-transparent">
-                  {stat.value}
-                </div>
-                <div className="text-gray-400 text-sm mt-1">{stat.label}</div>
-              </div>
-            ))}
           </div>
         </div>
       </section>
