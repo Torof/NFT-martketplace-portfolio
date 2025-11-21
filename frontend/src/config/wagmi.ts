@@ -1,11 +1,15 @@
 import { http, createConfig } from "wagmi";
-import { hardhat, sepolia } from "wagmi/chains";
+import { sepolia } from "wagmi/chains";
+import { injected } from "wagmi/connectors";
+import { ALCHEMY_SEPOLIA_URL } from "./alchemy";
 
 export const config = createConfig({
-  chains: [hardhat, sepolia],
+  chains: [sepolia],
+  connectors: [
+    injected(),
+  ],
   transports: {
-    [hardhat.id]: http("http://127.0.0.1:8545"),
-    [sepolia.id]: http(),
+    [sepolia.id]: http(ALCHEMY_SEPOLIA_URL),
   },
 });
 
