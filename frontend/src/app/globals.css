@@ -1,13 +1,33 @@
 @import "tailwindcss";
 
 :root {
-  --background: #13131a;
-  --foreground: #e5e5e5;
-  --card: #1c1c24;
-  --card-hover: #252530;
-  --border: #2a2a36;
-  --border-hover: #3a3a48;
-  --muted: #8b8b9b;
+  /* Base - darkest layer */
+  --background: #121318;
+  --foreground: #f0f2f5;
+
+  /* Cards - pop out from background */
+  --card: #1e2028;
+  --card-hover: #282c38;
+
+  /* Elevated surfaces - even lighter */
+  --surface: #2a2e3a;
+  --surface-hover: #343848;
+
+  /* Borders - white for clear separation */
+  --border: rgba(255, 255, 255, 0.5);
+  --border-hover: rgba(255, 255, 255, 0.8);
+
+  /* Text hierarchy */
+  --muted: #8890a0;
+
+  /* Shadows for depth */
+  --shadow-sm: 0 2px 8px rgba(0, 0, 0, 0.3);
+  --shadow-md: 0 4px 16px rgba(0, 0, 0, 0.4);
+  --shadow-lg: 0 8px 32px rgba(0, 0, 0, 0.5);
+
+  /* Accent glow for interactive elements */
+  --glow-blue: 0 0 20px rgba(59, 130, 246, 0.3);
+  --glow-purple: 0 0 20px rgba(147, 51, 234, 0.3);
 }
 
 body {
@@ -31,6 +51,39 @@ body {
 
 ::-webkit-scrollbar-thumb:hover {
   background: var(--border-hover);
+}
+
+/* Hero blob animations */
+@keyframes blob-float {
+  0%, 100% {
+    transform: translate(0, 0) scale(1);
+  }
+  33% {
+    transform: translate(30px, -20px) scale(1.05);
+  }
+  66% {
+    transform: translate(-20px, 20px) scale(0.95);
+  }
+}
+
+@keyframes blob-float-reverse {
+  0%, 100% {
+    transform: translate(0, 0) scale(1);
+  }
+  33% {
+    transform: translate(-30px, 20px) scale(0.95);
+  }
+  66% {
+    transform: translate(20px, -20px) scale(1.05);
+  }
+}
+
+.animate-blob {
+  animation: blob-float 8s ease-in-out infinite;
+}
+
+.animate-blob-reverse {
+  animation: blob-float-reverse 10s ease-in-out infinite;
 }
 
 /* Animations */
@@ -96,4 +149,45 @@ body {
 
 .delay-1000 {
   animation-delay: 1000ms;
+}
+
+/* Collection carousel auto-scroll */
+/* 10 items × 320px + 10 gaps × 16px = 3360px for one complete set */
+@keyframes scroll-left {
+  0% {
+    transform: translateX(0);
+  }
+  100% {
+    transform: translateX(calc(-320px * 10 - 16px * 10));
+  }
+}
+
+.animate-scroll {
+  animation: scroll-left 40s linear infinite;
+}
+
+.animate-scroll:hover {
+  animation-play-state: paused;
+}
+
+.pause-animation {
+  animation-play-state: paused;
+}
+
+/* Trending collections carousel - uses percentage for dynamic content */
+@keyframes scroll-left-trending {
+  0% {
+    transform: translateX(0);
+  }
+  100% {
+    transform: translateX(-50%);
+  }
+}
+
+.animate-scroll-trending {
+  animation: scroll-left-trending 35s linear infinite;
+}
+
+.animate-scroll-trending:hover {
+  animation-play-state: paused;
 }
