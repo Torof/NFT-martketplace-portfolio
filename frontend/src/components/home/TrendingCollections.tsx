@@ -1,9 +1,11 @@
 "use client";
 
 import Link from "next/link";
+import Image from "next/image";
 import { useListings } from "@/hooks/useListings";
-import { formatEther } from "viem";
-import { useMemo } from "react";
+import { formatEther, type Address } from "viem";
+import { useMemo, useState, useEffect } from "react";
+import { getContractMetadata, getNFTMetadata, getAlchemyImageUrl } from "@/lib/alchemy";
 
 interface CollectionStats {
   address: string;
@@ -11,6 +13,102 @@ interface CollectionStats {
   items: number;
   volume: bigint;
   floorPrice: bigint;
+}
+
+// Gradient colors for collections without images
+const GRADIENTS = [
+  "from-amber-500 to-orange-600",
+  "from-pink-500 to-rose-600",
+  "from-cyan-400 to-blue-500",
+  "from-yellow-400 to-pink-500",
+  "from-purple-500 to-violet-600",
+  "from-emerald-500 to-teal-600",
+  "from-indigo-500 to-purple-600",
+  "from-lime-500 to-green-600",
+  "from-fuchsia-500 to-pink-500",
+  "from-blue-500 to-indigo-600",
+];
+
+function CollectionImage({
+  contractAddress,
+  name,
+  index
+}: {
+  contractAddress: string;
+  name: string;
+  index: number;
+}) {
+  const [imageUrl, setImageUrl] = useState<string>("");
+  const [hasError, setHasError] = useState(false);
+  const [isLoading, setIsLoading] = useState(true);
+  const gradient = GRADIENTS[index % GRADIENTS.length];
+
+  useEffect(() => {
+    let cancelled = false;
+
+    async function fetchImage() {
+      try {
+        // First try to get collection image from contract metadata
+        const contractMeta = await getContractMetadata(contractAddress as Address);
+        if (!cancelled && contractMeta?.openSeaMetadata?.imageUrl) {
+          setImageUrl(contractMeta.openSeaMetadata.imageUrl);
+          setIsLoading(false);
+          return;
+        }
+
+        // Fall back to NFT #1 (or #0) image
+        let nft = await getNFTMetadata(contractAddress as Address, "1");
+        if (!nft) {
+          nft = await getNFTMetadata(contractAddress as Address, "0");
+        }
+
+        if (!cancelled && nft) {
+          const url = getAlchemyImageUrl(nft);
+          if (url) {
+            setImageUrl(url);
+          }
+        }
+      } catch (err) {
+        console.error("Error fetching collection image:", err);
+      } finally {
+        if (!cancelled) {
+          setIsLoading(false);
+        }
+      }
+    }
+
+    fetchImage();
+    return () => { cancelled = true; };
+  }, [contractAddress]);
+
+  if (isLoading) {
+    return (
+      <div className={`w-12 h-12 sm:w-16 sm:h-16 bg-gradient-to-br ${gradient} rounded-xl flex items-center justify-center text-white font-bold text-lg animate-pulse`}>
+        {name.charAt(0)}
+      </div>
+    );
+  }
+
+  if (!imageUrl || hasError) {
+    return (
+      <div className={`w-12 h-12 sm:w-16 sm:h-16 bg-gradient-to-br ${gradient} rounded-xl flex items-center justify-center text-white font-bold text-lg`}>
+        {name.charAt(0)}
+      </div>
+    );
+  }
+
+  return (
+    <div className="w-12 h-12 sm:w-16 sm:h-16 rounded-xl overflow-hidden relative bg-[var(--surface)]">
+      <Image
+        src={imageUrl}
+        alt={name}
+        fill
+        className="object-cover"
+        onError={() => setHasError(true)}
+        unoptimized
+      />
+    </div>
+  );
 }
 
 export function TrendingCollections() {
@@ -47,7 +145,7 @@ export function TrendingCollections() {
         {[...Array(3)].map((_, i) => (
           <div
             key={i}
-            className="flex items-center gap-4 p-4 bg-[var(--card)] rounded-xl border border-[var(--border)] animate-pulse"
+            className="flex items-center gap-4 p-4 bg-[var(--card)] rounded-xl border border-[var(--border)] animate-pulse shadow-[var(--shadow-sm)]"
           >
             <div className="w-16 h-16 bg-[var(--card-hover)] rounded-xl" />
             <div className="flex-1 space-y-2">
@@ -62,7 +160,7 @@ export function TrendingCollections() {
 
   if (collections.length === 0) {
     return (
-      <div className="text-center py-12 bg-[var(--card)] rounded-2xl border border-[var(--border)]">
+      <div className="text-center py-12 bg-[var(--card)] rounded-2xl border border-[var(--border)] shadow-[var(--shadow-md)]">
         <p className="text-[var(--muted)]">No collections yet</p>
       </div>
     );
@@ -82,16 +180,18 @@ export function TrendingCollections() {
       {collections.map((collection, index) => (
         <Link
           key={collection.address}
-          href={`/explore?search=${collection.address}`}
-          className="group grid grid-cols-12 gap-4 items-center p-4 bg-[var(--card)] rounded-xl border border-[var(--border)] hover:border-[var(--border-hover)] hover:bg-[var(--card-hover)] transition-all duration-300"
+          href={`/collection/${collection.address}`}
+          className="group grid grid-cols-12 gap-4 items-center p-4 bg-[var(--card)] rounded-xl border border-[var(--border)] hover:border-blue-500/50 hover:bg-[var(--card-hover)] transition-all duration-300 shadow-[var(--shadow-sm)] hover:shadow-[var(--shadow-md)]"
         >
           <div className="col-span-1 text-[var(--muted)] font-medium">
             {index + 1}
           </div>
           <div className="col-span-11 sm:col-span-5 flex items-center gap-4">
-            <div className="w-12 h-12 sm:w-16 sm:h-16 bg-gradient-to-br from-blue-500 to-purple-500 rounded-xl flex items-center justify-center text-white font-bold text-lg">
-              {collection.name.charAt(0)}
-            </div>
+            <CollectionImage
+              contractAddress={collection.address}
+              name={collection.name}
+              index={index}
+            />
             <div>
               <h3 className="font-semibold group-hover:text-blue-400 transition-colors">
                 {collection.name}
