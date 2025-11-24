@@ -3,8 +3,9 @@
 import { useEffect, useState } from "react";
 import { usePublicClient } from "wagmi";
 import { type Address, parseAbiItem } from "viem";
-import { MARKETPLACE_ADDRESS, MARKETPLACE_ABI } from "@/config/contracts";
-import { fetchNFTMetadata, resolveImageURL } from "@/lib/metadata";
+import { MARKETPLACE_ADDRESS, MARKETPLACE_ABI, TokenType } from "@/config/contracts";
+import { eventClient, getSafeFromBlock } from "@/lib/eventClient";
+import { getNFTMetadata, getAlchemyImageUrl, getAlchemyNFTName } from "@/lib/alchemy";
 
 interface ListingItem {
   contract: Address;
@@ -13,6 +14,8 @@ interface ListingItem {
   image: string;
   price: bigint;
   seller: Address;
+  tokenType: "ERC721" | "ERC1155";
+  amount: bigint;
 }
 
 export function useListings() {
@@ -28,37 +31,43 @@ export function useListings() {
       }
 
       try {
+        // Get a safe fromBlock within RPC limits
+        const fromBlock = await getSafeFromBlock();
+        console.log("Querying events from block:", fromBlock.toString());
+
         // Get NFTListed events
-        const listedEvents = await publicClient.getLogs({
+        const listedEvents = await eventClient.getLogs({
           address: MARKETPLACE_ADDRESS,
           event: parseAbiItem(
-            "event NFTListed(address indexed seller, address indexed nftContract, uint256 indexed tokenId, uint256 price)"
+            "event NFTListed(address indexed seller, address indexed nftContract, uint256 indexed tokenId, uint256 price, uint256 amount, uint8 tokenType)"
           ),
-          fromBlock: 0n,
+          fromBlock,
           toBlock: "latest",
         });
 
+        console.log("Listed events found:", listedEvents.length);
+
         // Get NFTSold events to filter out sold items
-        const soldEvents = await publicClient.getLogs({
+        const soldEvents = await eventClient.getLogs({
           address: MARKETPLACE_ADDRESS,
           event: parseAbiItem(
-            "event NFTSold(address indexed buyer, address indexed nftContract, uint256 indexed tokenId, uint256 price)"
+            "event NFTSold(address indexed buyer, address indexed nftContract, uint256 indexed tokenId, uint256 price, uint256 amount, uint8 tokenType)"
           ),
-          fromBlock: 0n,
+          fromBlock,
           toBlock: "latest",
         });
 
         // Get ListingCancelled events to filter out cancelled items
-        const cancelledEvents = await publicClient.getLogs({
+        const cancelledEvents = await eventClient.getLogs({
           address: MARKETPLACE_ADDRESS,
           event: parseAbiItem(
             "event ListingCancelled(address indexed seller, address indexed nftContract, uint256 indexed tokenId)"
           ),
-          fromBlock: 0n,
+          fromBlock,
           toBlock: "latest",
         });
 
-        // Create sets of sold and cancelled NFTs
+        // Create sets of sold and cancelled NFTs (include seller for ERC1155)
         const soldSet = new Set(
           soldEvents.map(
             (e) => `${e.args.nftContract}-${e.args.tokenId?.toString()}`
@@ -66,46 +75,85 @@ export function useListings() {
         );
         const cancelledSet = new Set(
           cancelledEvents.map(
-            (e) => `${e.args.nftContract}-${e.args.tokenId?.toString()}`
+            (e) => `${e.args.seller}-${e.args.nftContract}-${e.args.tokenId?.toString()}`
           )
         );
 
-        // Filter to only active listings
+        // Filter to only active listings (deduplicated)
         const activeListings: ListingItem[] = [];
+        const processedSet = new Set<string>();
 
         for (const event of listedEvents) {
-          const key = `${event.args.nftContract}-${event.args.tokenId?.toString()}`;
+          const seller = event.args.seller as Address;
+          const nftContract = event.args.nftContract as Address;
+          const tokenId = event.args.tokenId as bigint;
+          const tokenTypeNum = event.args.tokenType as number;
+          const isERC1155 = tokenTypeNum === TokenType.ERC1155;
 
-          // Skip if sold or cancelled
-          if (soldSet.has(key) || cancelledSet.has(key)) continue;
+          // Key includes seller for ERC1155 (multiple sellers can list same token)
+          const key = isERC1155
+            ? `${seller}-${nftContract}-${tokenId.toString()}`
+            : `${nftContract}-${tokenId.toString()}`;
+
+          // Skip if already processed or cancelled
+          if (processedSet.has(key)) continue;
+          if (cancelledSet.has(`${seller}-${nftContract}-${tokenId.toString()}`)) continue;
+          if (!isERC1155 && soldSet.has(`${nftContract}-${tokenId.toString()}`)) continue;
+
+          processedSet.add(key);
 
           // Verify listing is still active on-chain
-          const listing = await publicClient.readContract({
-            address: MARKETPLACE_ADDRESS,
-            abi: MARKETPLACE_ABI,
-            functionName: "getListing",
-            args: [event.args.nftContract as Address, event.args.tokenId as bigint],
-          });
+          let listing;
+          try {
+            if (isERC1155) {
+              listing = await publicClient.readContract({
+                address: MARKETPLACE_ADDRESS,
+                abi: MARKETPLACE_ABI,
+                functionName: "getERC1155Listing",
+                args: [nftContract, tokenId, seller],
+              });
+            } else {
+              listing = await publicClient.readContract({
+                address: MARKETPLACE_ADDRESS,
+                abi: MARKETPLACE_ABI,
+                functionName: "getListing",
+                args: [nftContract, tokenId],
+              });
+            }
+          } catch (err) {
+            console.error("Error fetching listing:", err);
+            continue;
+          }
 
           if (listing.active) {
-            // Fetch metadata
-            const metadata = await fetchNFTMetadata(
-              publicClient,
-              event.args.nftContract as Address,
-              event.args.tokenId as bigint
-            );
+            // Fetch metadata using Alchemy
+            let name = `NFT #${tokenId.toString()}`;
+            let image = "";
+
+            try {
+              const metadata = await getNFTMetadata(nftContract, tokenId.toString());
+              if (metadata) {
+                name = getAlchemyNFTName(metadata);
+                image = getAlchemyImageUrl(metadata);
+              }
+            } catch (err) {
+              console.error("Error fetching metadata:", err);
+            }
 
             activeListings.push({
-              contract: event.args.nftContract as Address,
-              tokenId: event.args.tokenId?.toString() || "0",
-              name: metadata?.name || `NFT #${event.args.tokenId?.toString()}`,
-              image: metadata?.image ? resolveImageURL(metadata.image) : "",
+              contract: nftContract,
+              tokenId: tokenId.toString(),
+              name,
+              image,
               price: listing.price,
               seller: listing.seller,
+              tokenType: isERC1155 ? "ERC1155" : "ERC721",
+              amount: listing.amount,
             });
           }
         }
 
+        console.log("Active listings:", activeListings.length);
         setListings(activeListings);
       } catch (error) {
         console.error("Error fetching listings:", error);
