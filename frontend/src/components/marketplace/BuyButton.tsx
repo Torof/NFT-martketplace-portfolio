@@ -10,10 +10,21 @@ interface BuyButtonProps {
   nftContract: Address;
   tokenId: bigint;
   price: bigint;
+  tokenType: "ERC721" | "ERC1155";
+  seller?: Address; // Required for ERC1155
+  amount?: bigint; // For display purposes (ERC1155)
   onSuccess?: () => void;
 }
 
-export function BuyButton({ nftContract, tokenId, price, onSuccess }: BuyButtonProps) {
+export function BuyButton({
+  nftContract,
+  tokenId,
+  price,
+  tokenType,
+  seller,
+  amount,
+  onSuccess,
+}: BuyButtonProps) {
   const { isConnected } = useAccount();
   const { showToast } = useToast();
 
@@ -38,13 +49,24 @@ export function BuyButton({ nftContract, tokenId, price, onSuccess }: BuyButtonP
 
   const handleBuy = () => {
     showToast("Confirm transaction in your wallet", "info");
-    writeContract({
-      address: MARKETPLACE_ADDRESS,
-      abi: MARKETPLACE_ABI,
-      functionName: "buyNFT",
-      args: [nftContract, tokenId],
-      value: price,
-    });
+
+    if (tokenType === "ERC1155" && seller) {
+      writeContract({
+        address: MARKETPLACE_ADDRESS,
+        abi: MARKETPLACE_ABI,
+        functionName: "buyERC1155",
+        args: [nftContract, tokenId, seller],
+        value: price,
+      });
+    } else {
+      writeContract({
+        address: MARKETPLACE_ADDRESS,
+        abi: MARKETPLACE_ABI,
+        functionName: "buyNFT",
+        args: [nftContract, tokenId],
+        value: price,
+      });
+    }
   };
 
   if (!isConnected) {
@@ -58,6 +80,10 @@ export function BuyButton({ nftContract, tokenId, price, onSuccess }: BuyButtonP
     );
   }
 
+  const buttonText = amount && amount > 1n
+    ? `Buy ${amount.toString()}x for ${formatEther(price)} ETH`
+    : `Buy for ${formatEther(price)} ETH`;
+
   return (
     <button
       onClick={handleBuy}
@@ -68,7 +94,7 @@ export function BuyButton({ nftContract, tokenId, price, onSuccess }: BuyButtonP
         ? "Confirm in wallet..."
         : isConfirming
         ? "Processing..."
-        : `Buy for ${formatEther(price)} ETH`}
+        : buttonText}
     </button>
   );
 }
