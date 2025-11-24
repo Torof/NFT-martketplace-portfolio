@@ -8,11 +8,12 @@ import {
   useReadContract,
 } from "wagmi";
 import { type Address, parseEther, formatEther } from "viem";
-import { MARKETPLACE_ADDRESS, MARKETPLACE_ABI, ERC721_ABI } from "@/config/contracts";
+import { MARKETPLACE_ADDRESS, MARKETPLACE_ABI, ERC721_ABI, ERC1155_ABI } from "@/config/contracts";
 
 interface ListingActionsProps {
   nftContract: Address;
   tokenId: bigint;
+  tokenType: "ERC721" | "ERC1155";
   currentPrice?: bigint;
   onSuccess?: () => void;
 }
@@ -20,6 +21,7 @@ interface ListingActionsProps {
 export function ListingActions({
   nftContract,
   tokenId,
+  tokenType,
   currentPrice,
   onSuccess,
 }: ListingActionsProps) {
@@ -27,6 +29,7 @@ export function ListingActions({
   const [price, setPrice] = useState(
     currentPrice ? formatEther(currentPrice) : ""
   );
+  const [amount, setAmount] = useState("1");
   const [mode, setMode] = useState<"view" | "list" | "update">("view");
   const [error, setError] = useState<string | null>(null);
 
@@ -36,35 +39,68 @@ export function ListingActions({
     hash,
   });
 
-  // Check if marketplace is approved
+  const isERC1155 = tokenType === "ERC1155";
+  const hasAddress = !!address;
+
+  // Check approval for ERC721
   const { data: approvedAddress } = useReadContract({
     address: nftContract,
     abi: ERC721_ABI,
     functionName: "getApproved",
     args: [tokenId],
+    query: { enabled: !isERC1155 && hasAddress },
   });
 
-  const { data: isApprovedForAll } = useReadContract({
+  const { data: isApprovedForAll721 } = useReadContract({
     address: nftContract,
     abi: ERC721_ABI,
     functionName: "isApprovedForAll",
-    args: [address as Address, MARKETPLACE_ADDRESS],
+    args: [address!, MARKETPLACE_ADDRESS],
+    query: { enabled: !isERC1155 && hasAddress },
   });
 
-  const isApproved =
-    approvedAddress?.toLowerCase() === MARKETPLACE_ADDRESS.toLowerCase() ||
-    isApprovedForAll;
+  // Check approval for ERC1155
+  const { data: isApprovedForAll1155 } = useReadContract({
+    address: nftContract,
+    abi: ERC1155_ABI,
+    functionName: "isApprovedForAll",
+    args: [address!, MARKETPLACE_ADDRESS],
+    query: { enabled: isERC1155 && hasAddress },
+  });
+
+  // Check ERC1155 balance
+  const { data: balance1155 } = useReadContract({
+    address: nftContract,
+    abi: ERC1155_ABI,
+    functionName: "balanceOf",
+    args: [address!, tokenId],
+    query: { enabled: isERC1155 && hasAddress },
+  });
+
+  const isApproved = isERC1155
+    ? isApprovedForAll1155
+    : approvedAddress?.toLowerCase() === MARKETPLACE_ADDRESS.toLowerCase() ||
+      isApprovedForAll721;
 
   const isListed = currentPrice !== undefined;
 
   const handleApprove = () => {
     setError(null);
-    writeContract({
-      address: nftContract,
-      abi: ERC721_ABI,
-      functionName: "approve",
-      args: [MARKETPLACE_ADDRESS, tokenId],
-    });
+    if (isERC1155) {
+      writeContract({
+        address: nftContract,
+        abi: ERC1155_ABI,
+        functionName: "setApprovalForAll",
+        args: [MARKETPLACE_ADDRESS, true],
+      });
+    } else {
+      writeContract({
+        address: nftContract,
+        abi: ERC721_ABI,
+        functionName: "approve",
+        args: [MARKETPLACE_ADDRESS, tokenId],
+      });
+    }
   };
 
   const handleList = () => {
@@ -72,13 +108,31 @@ export function ListingActions({
       setError("Please enter a valid price");
       return;
     }
+    if (isERC1155 && (!amount || parseInt(amount) <= 0)) {
+      setError("Please enter a valid amount");
+      return;
+    }
+    if (isERC1155 && balance1155 && BigInt(amount) > balance1155) {
+      setError(`You only have ${balance1155.toString()} of this token`);
+      return;
+    }
     setError(null);
-    writeContract({
-      address: MARKETPLACE_ADDRESS,
-      abi: MARKETPLACE_ABI,
-      functionName: "listNFT",
-      args: [nftContract, tokenId, parseEther(price)],
-    });
+
+    if (isERC1155) {
+      writeContract({
+        address: MARKETPLACE_ADDRESS,
+        abi: MARKETPLACE_ABI,
+        functionName: "listERC1155",
+        args: [nftContract, tokenId, BigInt(amount), parseEther(price)],
+      });
+    } else {
+      writeContract({
+        address: MARKETPLACE_ADDRESS,
+        abi: MARKETPLACE_ABI,
+        functionName: "listNFT",
+        args: [nftContract, tokenId, parseEther(price)],
+      });
+    }
   };
 
   const handleUpdatePrice = () => {
@@ -87,22 +141,42 @@ export function ListingActions({
       return;
     }
     setError(null);
-    writeContract({
-      address: MARKETPLACE_ADDRESS,
-      abi: MARKETPLACE_ABI,
-      functionName: "updateListingPrice",
-      args: [nftContract, tokenId, parseEther(price)],
-    });
+
+    if (isERC1155) {
+      writeContract({
+        address: MARKETPLACE_ADDRESS,
+        abi: MARKETPLACE_ABI,
+        functionName: "updateERC1155ListingPrice",
+        args: [nftContract, tokenId, parseEther(price)],
+      });
+    } else {
+      writeContract({
+        address: MARKETPLACE_ADDRESS,
+        abi: MARKETPLACE_ABI,
+        functionName: "updateListingPrice",
+        args: [nftContract, tokenId, parseEther(price)],
+      });
+    }
   };
 
   const handleCancel = () => {
     setError(null);
-    writeContract({
-      address: MARKETPLACE_ADDRESS,
-      abi: MARKETPLACE_ABI,
-      functionName: "cancelListing",
-      args: [nftContract, tokenId],
-    });
+
+    if (isERC1155) {
+      writeContract({
+        address: MARKETPLACE_ADDRESS,
+        abi: MARKETPLACE_ABI,
+        functionName: "cancelERC1155Listing",
+        args: [nftContract, tokenId],
+      });
+    } else {
+      writeContract({
+        address: MARKETPLACE_ADDRESS,
+        abi: MARKETPLACE_ABI,
+        functionName: "cancelListing",
+        args: [nftContract, tokenId],
+      });
+    }
   };
 
   if (isSuccess) {
@@ -130,7 +204,7 @@ export function ListingActions({
         <div className="space-y-4">
           {!isApproved ? (
             <>
-              <p className="text-gray-400 text-sm">
+              <p className="text-[var(--muted)] text-sm">
                 First, approve the marketplace to transfer your NFT
               </p>
               <button
@@ -143,9 +217,26 @@ export function ListingActions({
             </>
           ) : (
             <>
+              {isERC1155 && (
+                <div>
+                  <label className="block text-sm text-[var(--muted)] mb-2">
+                    Amount {balance1155 && `(You have: ${balance1155.toString()})`}
+                  </label>
+                  <input
+                    type="number"
+                    step="1"
+                    min="1"
+                    max={balance1155?.toString()}
+                    value={amount}
+                    onChange={(e) => setAmount(e.target.value)}
+                    placeholder="1"
+                    className="w-full px-4 py-2 bg-[var(--surface)] border border-[var(--border)] rounded-lg focus:outline-none focus:border-blue-500"
+                  />
+                </div>
+              )}
               <div>
-                <label className="block text-sm text-gray-400 mb-2">
-                  Price (ETH)
+                <label className="block text-sm text-[var(--muted)] mb-2">
+                  Price (ETH) {isERC1155 && "(total for all)"}
                 </label>
                 <input
                   type="number"
@@ -154,13 +245,13 @@ export function ListingActions({
                   value={price}
                   onChange={(e) => setPrice(e.target.value)}
                   placeholder="0.00"
-                  className="w-full px-4 py-2 bg-gray-800 border border-gray-700 rounded-lg focus:outline-none focus:border-blue-500"
+                  className="w-full px-4 py-2 bg-[var(--surface)] border border-[var(--border)] rounded-lg focus:outline-none focus:border-blue-500"
                 />
               </div>
               <div className="flex gap-3">
                 <button
                   onClick={() => setMode("view")}
-                  className="flex-1 py-3 px-4 border border-gray-600 text-white rounded-lg hover:bg-gray-800 transition-colors"
+                  className="flex-1 py-3 px-4 border border-[var(--border)] text-white rounded-lg hover:bg-[var(--card-hover)] transition-colors"
                 >
                   Cancel
                 </button>
@@ -194,7 +285,7 @@ export function ListingActions({
     return (
       <div className="space-y-4">
         <div>
-          <label className="block text-sm text-gray-400 mb-2">
+          <label className="block text-sm text-[var(--muted)] mb-2">
             New Price (ETH)
           </label>
           <input
@@ -204,13 +295,13 @@ export function ListingActions({
             value={price}
             onChange={(e) => setPrice(e.target.value)}
             placeholder="0.00"
-            className="w-full px-4 py-2 bg-gray-800 border border-gray-700 rounded-lg focus:outline-none focus:border-blue-500"
+            className="w-full px-4 py-2 bg-[var(--surface)] border border-[var(--border)] rounded-lg focus:outline-none focus:border-blue-500"
           />
         </div>
         <div className="flex gap-3">
           <button
             onClick={() => setMode("view")}
-            className="flex-1 py-3 px-4 border border-gray-600 text-white rounded-lg hover:bg-gray-800 transition-colors"
+            className="flex-1 py-3 px-4 border border-[var(--border)] text-white rounded-lg hover:bg-[var(--card-hover)] transition-colors"
           >
             Cancel
           </button>
