@@ -26,7 +26,7 @@ export function NFTCard({
 
   return (
     <Link href={`/nft/${contract}/${tokenId}`}>
-      <div className="bg-[var(--card)] rounded-xl overflow-hidden border border-[var(--border)] hover:border-[var(--border-hover)] transition-all duration-300 group hover:-translate-y-1">
+      <div className="bg-[var(--card)] rounded-xl overflow-hidden border border-[var(--border)] hover:border-blue-500/50 transition-all duration-300 group hover:-translate-y-2 shadow-[var(--shadow-md)] hover:shadow-[var(--shadow-lg)]">
         <div className="aspect-square relative bg-[var(--card-hover)]">
           {image ? (
             isDataUri ? (
@@ -47,6 +47,12 @@ export function NFTCard({
           ) : (
             <div className="w-full h-full flex items-center justify-center text-[var(--muted)]">
               No Image
+            </div>
+          )}
+          {/* For Sale Badge */}
+          {price !== undefined && (
+            <div className="absolute top-2 right-2 px-2 py-1 bg-green-500/90 text-white text-xs font-medium rounded-full">
+              For Sale
             </div>
           )}
         </div>
