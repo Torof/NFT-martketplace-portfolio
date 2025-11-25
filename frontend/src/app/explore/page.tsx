@@ -54,17 +54,17 @@ function ExploreContent() {
               Search: "{searchQuery}"
             </div>
           )}
-          <span className="text-gray-400 text-sm">
+          <span className="text-[var(--muted)] text-sm">
             {filteredAndSortedListings.length} items
           </span>
         </div>
 
         <div className="flex items-center gap-2">
-          <label className="text-gray-400 text-sm">Sort by:</label>
+          <label className="text-[var(--muted)] text-sm">Sort by:</label>
           <select
             value={sortBy}
             onChange={(e) => setSortBy(e.target.value as SortOption)}
-            className="bg-gray-800 border border-gray-700 rounded-lg px-3 py-1.5 text-sm text-white focus:outline-none focus:border-blue-500"
+            className="bg-[var(--card)] border border-[var(--border)] rounded-lg px-3 py-1.5 text-sm text-[var(--foreground)] focus:outline-none focus:border-blue-500 shadow-[var(--shadow-sm)]"
           >
             <option value="recent">Recently Listed</option>
             <option value="price-low">Price: Low to High</option>
@@ -75,8 +75,8 @@ function ExploreContent() {
 
       {isLoading ? (
         <div className="text-center py-12">
-          <div className="inline-block animate-spin rounded-full h-8 w-8 border-4 border-gray-600 border-t-blue-500" />
-          <p className="text-gray-400 mt-4">Loading listings...</p>
+          <div className="inline-block animate-spin rounded-full h-8 w-8 border-4 border-[var(--border)] border-t-blue-500" />
+          <p className="text-[var(--muted)] mt-4">Loading listings...</p>
         </div>
       ) : (
         <NFTGrid
@@ -97,7 +97,7 @@ export default function ExplorePage() {
     <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
       <div className="mb-8">
         <h1 className="text-3xl font-bold">Explore NFTs</h1>
-        <p className="text-gray-400 mt-2">
+        <p className="text-[var(--muted)] mt-2">
           Discover and collect extraordinary NFTs
         </p>
       </div>
@@ -105,8 +105,8 @@ export default function ExplorePage() {
       <Suspense
         fallback={
           <div className="text-center py-12">
-            <div className="inline-block animate-spin rounded-full h-8 w-8 border-4 border-gray-600 border-t-blue-500" />
-            <p className="text-gray-400 mt-4">Loading...</p>
+            <div className="inline-block animate-spin rounded-full h-8 w-8 border-4 border-[var(--border)] border-t-blue-500" />
+            <p className="text-[var(--muted)] mt-4">Loading...</p>
           </div>
         }
       >
