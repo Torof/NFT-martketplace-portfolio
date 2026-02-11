@@ -1,11 +1,10 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { usePublicClient } from "wagmi";
 import { type Address, parseAbiItem } from "viem";
 import { MARKETPLACE_ADDRESS } from "@/config/contracts";
 import { getNFTMetadata, getAlchemyImageUrl, getAlchemyNFTName } from "@/lib/alchemy";
-import { eventClient, getSafeFromBlock } from "@/lib/eventClient";
+import { getLogsChunked } from "@/lib/eventClient";
 
 interface SoldNFT {
   contract: Address;
@@ -19,27 +18,16 @@ interface SoldNFT {
 export function useRecentSales() {
   const [sales, setSales] = useState<SoldNFT[]>([]);
   const [isLoading, setIsLoading] = useState(true);
-  const publicClient = usePublicClient();
 
   useEffect(() => {
     async function fetchRecentSales() {
-      if (!publicClient) {
-        setIsLoading(false);
-        return;
-      }
-
       try {
-        // Get a safe fromBlock within RPC limits
-        const fromBlock = await getSafeFromBlock();
-
-        // Get NFTSold events
-        const soldEvents = await eventClient.getLogs({
+        // Get NFTSold events (chunked to handle any block range)
+        const soldEvents = await getLogsChunked({
           address: MARKETPLACE_ADDRESS,
           event: parseAbiItem(
             "event NFTSold(address indexed buyer, address indexed nftContract, uint256 indexed tokenId, uint256 price, uint256 amount, uint8 tokenType)"
           ),
-          fromBlock,
-          toBlock: "latest",
         });
 
         // Get the most recent 10 sales
@@ -75,7 +63,7 @@ export function useRecentSales() {
     }
 
     fetchRecentSales();
-  }, [publicClient]);
+  }, []);
 
   return { sales, isLoading };
 }

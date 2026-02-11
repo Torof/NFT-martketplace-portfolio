@@ -3,7 +3,7 @@
 import { useEffect, useState } from "react";
 import { type Address } from "viem";
 import { MARKETPLACE_ADDRESS } from "@/config/contracts";
-import { eventClient, getSafeFromBlock } from "@/lib/eventClient";
+import { getLogsChunked } from "@/lib/eventClient";
 
 export type EventType = "listed" | "sold" | "bought" | "cancelled";
 
@@ -37,11 +37,8 @@ export function useMarketplaceHistory(userAddress: Address | undefined) {
       try {
         const allEvents: HistoryEvent[] = [];
 
-        // Get a safe fromBlock within RPC limits
-        const fromBlock = await getSafeFromBlock();
-
         // Fetch NFTListed events where user is the seller
-        const listedLogs = await eventClient.getLogs({
+        const listedLogs = await getLogsChunked({
           address: MARKETPLACE_ADDRESS,
           event: {
             type: "event",
@@ -58,8 +55,6 @@ export function useMarketplaceHistory(userAddress: Address | undefined) {
           args: {
             seller: userAddress,
           },
-          fromBlock,
-          toBlock: "latest",
         });
 
         for (const log of listedLogs) {
@@ -76,7 +71,7 @@ export function useMarketplaceHistory(userAddress: Address | undefined) {
         }
 
         // Fetch NFTSold events where user is the buyer
-        const boughtLogs = await eventClient.getLogs({
+        const boughtLogs = await getLogsChunked({
           address: MARKETPLACE_ADDRESS,
           event: {
             type: "event",
@@ -93,8 +88,6 @@ export function useMarketplaceHistory(userAddress: Address | undefined) {
           args: {
             buyer: userAddress,
           },
-          fromBlock,
-          toBlock: "latest",
         });
 
         for (const log of boughtLogs) {
@@ -111,7 +104,7 @@ export function useMarketplaceHistory(userAddress: Address | undefined) {
         }
 
         // Fetch ListingCancelled events where user is the seller
-        const cancelledLogs = await eventClient.getLogs({
+        const cancelledLogs = await getLogsChunked({
           address: MARKETPLACE_ADDRESS,
           event: {
             type: "event",
@@ -125,8 +118,6 @@ export function useMarketplaceHistory(userAddress: Address | undefined) {
           args: {
             seller: userAddress,
           },
-          fromBlock,
-          toBlock: "latest",
         });
 
         for (const log of cancelledLogs) {

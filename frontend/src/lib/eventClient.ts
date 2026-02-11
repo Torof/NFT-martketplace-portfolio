@@ -1,22 +1,39 @@
 import { createPublicClient, http } from "viem";
 import { sepolia } from "viem/chains";
+import { ALCHEMY_SEPOLIA_URL } from "@/config/alchemy";
+import { MARKETPLACE_DEPLOYMENT_BLOCK } from "@/config/contracts";
 
-// Use a public RPC for event queries
+// Use Alchemy RPC for event queries
 export const eventClient = createPublicClient({
   chain: sepolia,
-  transport: http("https://ethereum-sepolia-rpc.publicnode.com"),
+  transport: http(ALCHEMY_SEPOLIA_URL),
 });
 
-// Helper to get a safe fromBlock (within RPC limits)
-// Most public RPCs limit to 50k blocks, so we query from (current - 40000)
-export async function getSafeFromBlock(): Promise<bigint> {
-  try {
-    const currentBlock = await eventClient.getBlockNumber();
-    // Query last 40k blocks to stay within limits
-    const safeFrom = currentBlock > 40000n ? currentBlock - 40000n : 0n;
-    return safeFrom;
-  } catch {
-    // Fallback to a recent block if we can't get current
-    return 7750000n;
+const CHUNK_SIZE = 50000n;
+
+/**
+ * Fetches logs in chunks to avoid RPC block range limits.
+ * Queries from MARKETPLACE_DEPLOYMENT_BLOCK to latest in increments of CHUNK_SIZE.
+ */
+export async function getLogsChunked(
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  params: Record<string, any>
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+): Promise<any[]> {
+  const currentBlock = await eventClient.getBlockNumber();
+  const fromBlock = MARKETPLACE_DEPLOYMENT_BLOCK;
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  const logs: any[] = [];
+
+  for (let start = fromBlock; start <= currentBlock; start += CHUNK_SIZE + 1n) {
+    const end = start + CHUNK_SIZE > currentBlock ? currentBlock : start + CHUNK_SIZE;
+    const chunk = await eventClient.getLogs({
+      ...params,
+      fromBlock: start,
+      toBlock: end,
+    } as Parameters<typeof eventClient.getLogs>[0]);
+    logs.push(...chunk);
   }
+
+  return logs;
 }

@@ -2,13 +2,13 @@
 
 import { use, useEffect, useState } from "react";
 import Link from "next/link";
-import { useAccount, useReadContract, usePublicClient } from "wagmi";
+import { useAccount, useReadContract } from "wagmi";
 import { formatEther, type Address, parseAbiItem } from "viem";
 import { MARKETPLACE_ADDRESS, MARKETPLACE_ABI, TokenType } from "@/config/contracts";
 import { BuyButton } from "@/components/marketplace/BuyButton";
 import { ListingActions } from "@/components/marketplace/ListingActions";
 import { useAlchemyNFTDetail } from "@/hooks/useAlchemyNFTDetail";
-import { eventClient, getSafeFromBlock } from "@/lib/eventClient";
+import { eventClient, getLogsChunked } from "@/lib/eventClient";
 
 interface PageProps {
   params: Promise<{
@@ -27,7 +27,6 @@ interface ListingData {
 export default function NFTDetailPage({ params }: PageProps) {
   const { contract, tokenId } = use(params);
   const { address } = useAccount();
-  const publicClient = usePublicClient();
 
   const nftContract = contract as Address;
   const tokenIdBigInt = BigInt(tokenId);
@@ -51,14 +50,12 @@ export default function NFTDetailPage({ params }: PageProps) {
   // Fetch ERC1155 listings by querying events
   useEffect(() => {
     async function fetchERC1155Listings() {
-      if (!publicClient || nft?.tokenType !== "ERC1155") return;
+      if (nft?.tokenType !== "ERC1155") return;
 
       setErc1155Loading(true);
       try {
-        const fromBlock = await getSafeFromBlock();
-
-        // Get all NFTListed events for this specific token
-        const listedEvents = await eventClient.getLogs({
+        // Get all NFTListed events for this specific token (chunked to handle any block range)
+        const listedEvents = await getLogsChunked({
           address: MARKETPLACE_ADDRESS,
           event: parseAbiItem(
             "event NFTListed(address indexed seller, address indexed nftContract, uint256 indexed tokenId, uint256 price, uint256 amount, uint8 tokenType)"
@@ -67,8 +64,6 @@ export default function NFTDetailPage({ params }: PageProps) {
             nftContract: nftContract,
             tokenId: tokenIdBigInt,
           },
-          fromBlock,
-          toBlock: "latest",
         });
 
         // Get unique sellers
@@ -78,7 +73,7 @@ export default function NFTDetailPage({ params }: PageProps) {
         const activeListings: ListingData[] = [];
         for (const seller of sellers) {
           try {
-            const listing = await publicClient.readContract({
+            const listing = await eventClient.readContract({
               address: MARKETPLACE_ADDRESS,
               abi: MARKETPLACE_ABI,
               functionName: "getERC1155Listing",
@@ -109,7 +104,7 @@ export default function NFTDetailPage({ params }: PageProps) {
     }
 
     fetchERC1155Listings();
-  }, [publicClient, nft?.tokenType, nftContract, tokenIdBigInt, refreshCounter]);
+  }, [nft?.tokenType, nftContract, tokenIdBigInt, refreshCounter]);
 
   const refetchListing = () => {
     refetchERC721Listing();

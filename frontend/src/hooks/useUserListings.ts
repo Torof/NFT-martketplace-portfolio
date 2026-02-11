@@ -1,10 +1,9 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { usePublicClient } from "wagmi";
 import { type Address, parseAbiItem } from "viem";
 import { MARKETPLACE_ADDRESS, MARKETPLACE_ABI, TokenType } from "@/config/contracts";
-import { eventClient, getSafeFromBlock } from "@/lib/eventClient";
+import { eventClient, getLogsChunked } from "@/lib/eventClient";
 import { getNFTMetadata, getAlchemyImageUrl, getAlchemyNFTName } from "@/lib/alchemy";
 
 interface ListingItem {
@@ -19,8 +18,6 @@ interface ListingItem {
 export function useUserListings(userAddress: Address) {
   const [listings, setListings] = useState<ListingItem[]>([]);
   const [isLoading, setIsLoading] = useState(true);
-  const publicClient = usePublicClient();
-
   // Reset state when address changes
   useEffect(() => {
     setListings([]);
@@ -29,17 +26,14 @@ export function useUserListings(userAddress: Address) {
 
   useEffect(() => {
     async function fetchUserListings() {
-      if (!publicClient || !userAddress) {
+      if (!userAddress) {
         setIsLoading(false);
         return;
       }
 
       try {
-        // Get a safe fromBlock within RPC limits
-        const fromBlock = await getSafeFromBlock();
-
-        // Get NFTListed events from this seller
-        const listedEvents = await eventClient.getLogs({
+        // Get NFTListed events from this seller (chunked to handle any block range)
+        const listedEvents = await getLogsChunked({
           address: MARKETPLACE_ADDRESS,
           event: parseAbiItem(
             "event NFTListed(address indexed seller, address indexed nftContract, uint256 indexed tokenId, uint256 price, uint256 amount, uint8 tokenType)"
@@ -47,8 +41,6 @@ export function useUserListings(userAddress: Address) {
           args: {
             seller: userAddress,
           },
-          fromBlock,
-          toBlock: "latest",
         });
 
         // Check which listings are still active
@@ -64,14 +56,14 @@ export function useUserListings(userAddress: Address) {
           let listing;
           try {
             if (isERC1155) {
-              listing = await publicClient.readContract({
+              listing = await eventClient.readContract({
                 address: MARKETPLACE_ADDRESS,
                 abi: MARKETPLACE_ABI,
                 functionName: "getERC1155Listing",
                 args: [nftContract, tokenId, userAddress],
               });
             } else {
-              listing = await publicClient.readContract({
+              listing = await eventClient.readContract({
                 address: MARKETPLACE_ADDRESS,
                 abi: MARKETPLACE_ABI,
                 functionName: "getListing",
@@ -118,7 +110,7 @@ export function useUserListings(userAddress: Address) {
     }
 
     fetchUserListings();
-  }, [publicClient, userAddress]);
+  }, [userAddress]);
 
   return { listings, isLoading };
 }

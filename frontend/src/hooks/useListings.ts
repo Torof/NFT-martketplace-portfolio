@@ -1,10 +1,9 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { usePublicClient } from "wagmi";
 import { type Address, parseAbiItem } from "viem";
 import { MARKETPLACE_ADDRESS, MARKETPLACE_ABI, TokenType } from "@/config/contracts";
-import { eventClient, getSafeFromBlock } from "@/lib/eventClient";
+import { eventClient, getLogsChunked } from "@/lib/eventClient";
 import { getNFTMetadata, getAlchemyImageUrl, getAlchemyNFTName } from "@/lib/alchemy";
 
 interface ListingItem {
@@ -21,50 +20,34 @@ interface ListingItem {
 export function useListings() {
   const [listings, setListings] = useState<ListingItem[]>([]);
   const [isLoading, setIsLoading] = useState(true);
-  const publicClient = usePublicClient();
 
   useEffect(() => {
     async function fetchListings() {
-      if (!publicClient) {
-        setIsLoading(false);
-        return;
-      }
-
       try {
-        // Get a safe fromBlock within RPC limits
-        const fromBlock = await getSafeFromBlock();
-        console.log("Querying events from block:", fromBlock.toString());
-
-        // Get NFTListed events
-        const listedEvents = await eventClient.getLogs({
+        // Get NFTListed events (chunked to handle any block range)
+        const listedEvents = await getLogsChunked({
           address: MARKETPLACE_ADDRESS,
           event: parseAbiItem(
             "event NFTListed(address indexed seller, address indexed nftContract, uint256 indexed tokenId, uint256 price, uint256 amount, uint8 tokenType)"
           ),
-          fromBlock,
-          toBlock: "latest",
         });
 
         console.log("Listed events found:", listedEvents.length);
 
         // Get NFTSold events to filter out sold items
-        const soldEvents = await eventClient.getLogs({
+        const soldEvents = await getLogsChunked({
           address: MARKETPLACE_ADDRESS,
           event: parseAbiItem(
             "event NFTSold(address indexed buyer, address indexed nftContract, uint256 indexed tokenId, uint256 price, uint256 amount, uint8 tokenType)"
           ),
-          fromBlock,
-          toBlock: "latest",
         });
 
         // Get ListingCancelled events to filter out cancelled items
-        const cancelledEvents = await eventClient.getLogs({
+        const cancelledEvents = await getLogsChunked({
           address: MARKETPLACE_ADDRESS,
           event: parseAbiItem(
             "event ListingCancelled(address indexed seller, address indexed nftContract, uint256 indexed tokenId)"
           ),
-          fromBlock,
-          toBlock: "latest",
         });
 
         // Create sets of sold and cancelled NFTs (include seller for ERC1155)
@@ -106,14 +89,14 @@ export function useListings() {
           let listing;
           try {
             if (isERC1155) {
-              listing = await publicClient.readContract({
+              listing = await eventClient.readContract({
                 address: MARKETPLACE_ADDRESS,
                 abi: MARKETPLACE_ABI,
                 functionName: "getERC1155Listing",
                 args: [nftContract, tokenId, seller],
               });
             } else {
-              listing = await publicClient.readContract({
+              listing = await eventClient.readContract({
                 address: MARKETPLACE_ADDRESS,
                 abi: MARKETPLACE_ABI,
                 functionName: "getListing",
@@ -163,7 +146,7 @@ export function useListings() {
     }
 
     fetchListings();
-  }, [publicClient]);
+  }, []);
 
   return { listings, isLoading };
 }
