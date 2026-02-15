@@ -6,7 +6,7 @@ export const MARKETPLACE_ADDRESS: Address =
 
 // Block number when the contract was deployed (for event queries)
 // This avoids querying from block 0 which exceeds RPC limits
-export const MARKETPLACE_DEPLOYMENT_BLOCK = 7700000n; // Approximate deployment block
+export const MARKETPLACE_DEPLOYMENT_BLOCK = 10170000n;
 
 // Known NFT contracts - not needed for Sepolia (using Alchemy API)
 export const KNOWN_NFT_CONTRACTS: Address[] = [];

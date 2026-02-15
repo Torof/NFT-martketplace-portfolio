@@ -1,12 +1,11 @@
 import { createPublicClient, http } from "viem";
 import { sepolia } from "viem/chains";
-import { ALCHEMY_SEPOLIA_URL } from "@/config/alchemy";
 import { MARKETPLACE_DEPLOYMENT_BLOCK } from "@/config/contracts";
 
-// Use Alchemy RPC for event queries
+// Use public RPC for event queries and contract reads (supports 50k block range for getLogs)
 export const eventClient = createPublicClient({
   chain: sepolia,
-  transport: http(ALCHEMY_SEPOLIA_URL),
+  transport: http("https://ethereum-sepolia-rpc.publicnode.com"),
 });
 
 const CHUNK_SIZE = 50000n;
