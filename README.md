@@ -2,6 +2,8 @@
 
 A full-stack decentralized NFT marketplace built on Ethereum (Sepolia testnet). Users can browse collections, list NFTs for sale, and purchase them — all through a modern Web3 interface.
 
+**Live demo:** https://nft-martketplace-portfolio.vercel.app/
+
 ![Homepage Screenshot](frontend/public/Screenshot%20from%202026-02-15%2017-12-31.png)
 
 ## Features
